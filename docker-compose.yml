@@ -10,9 +10,12 @@ services:
     user: root
     restart: always
   open_notebook:
-    image: lfnovo/open_notebook:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8502:8502"
+      - "5055:5055"  # REST API
     env_file:
       - ./docker.env
     depends_on:
@@ -20,4 +23,5 @@ services:
     pull_policy: always
     volumes:
       - ./notebook_data:/app/data
+      - ./share:/app/share
     restart: always
