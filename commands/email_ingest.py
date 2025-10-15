@@ -208,24 +208,12 @@ async def _create_email_source(notebook_id: str, email_data: EmailData) -> Optio
     try:
         # Format email content
         content = f"""Subject: {email_data.subject}
-From: {email_data.sender}
-Date: {email_data.date}
-Message-ID: {email_data.message_id}
+        From: {email_data.sender}
+        Date: {email_data.date}
+        Message-ID: {email_data.message_id}
 
-{email_data.body}
-"""
-        
-        # Dense Summary transformation ID
-        dense_summary_id = "transformation:ciqyp8834jwqo81p7901"
-        
-        source_data = {
-            "notebook_id": notebook_id,
-            "title": f"Email: {email_data.subject}",
-            "content": content,
-            "type": "text",
-            "transformations": [dense_summary_id],  # Apply dense summary
-            "embed": True  # Enable embedding for search
-        }
+        {email_data.body}
+        """
         
         # Get API base URL and password from environment
         api_base = os.getenv("API_BASE_URL", "http://localhost:5055")
@@ -234,6 +222,21 @@ Message-ID: {email_data.message_id}
         headers = {}
         if password:
             headers["Authorization"] = f"Bearer {password}"
+        
+        # Get Dense Summary transformation ID dynamically
+        dense_summary_id = await _get_dense_summary_transformation_id(api_base, headers)
+        
+        source_data = {
+            "notebook_id": notebook_id,
+            "title": f"Email: {email_data.subject}",
+            "content": content,
+            "type": "text",
+            "embed": True  # Enable embedding for search
+        }
+        
+        # Add transformations only if we found the Dense Summary
+        if dense_summary_id:
+            source_data["transformations"] = [dense_summary_id]
         
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -267,6 +270,28 @@ Message-ID: {email_data.message_id}
                     
     except Exception as e:
         logger.error(f"Failed to create email source: {e}")
+        return None
+
+async def _get_dense_summary_transformation_id(api_base: str, headers: dict) -> Optional[str]:
+    """Get the Dense Summary transformation ID from the API"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{api_base}/api/transformations",
+                headers=headers
+            ) as response:
+                if response.status == 200:
+                    transformations = await response.json()
+                    for transformation in transformations:
+                        if transformation.get("name") == "Dense Summary":
+                            return transformation.get("id")
+                    logger.warning("Dense Summary transformation not found")
+                    return None
+                else:
+                    logger.error(f"Failed to fetch transformations: {response.status}")
+                    return None
+    except Exception as e:
+        logger.error(f"Failed to get transformation ID: {e}")
         return None
 
 # Enhanced command for testing the complete email ingestion process
