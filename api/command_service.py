@@ -1,9 +1,10 @@
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
-from surreal_commands import get_command_status, submit_command
+from surreal_commands import get_command_status
 
 from api.models import ErrorResponse
+from open_notebook.worker_manager import worker_manager
 
 
 class CommandService:
@@ -16,7 +17,7 @@ class CommandService:
         command_args: Dict[str, Any],
         context: Optional[Dict[str, Any]] = None,
     ) -> str:
-        """Submit a generic command job for background processing"""
+        """Submit a generic command job for background processing with auto-worker management"""
         try:
             # Ensure command modules are imported before submitting
             # This is needed because submit_command validates against local registry
@@ -28,16 +29,15 @@ class CommandService:
                 logger.error(f"Failed to import command modules: {import_err}")
                 raise ValueError("Command modules not available")
 
-            # surreal-commands expects: submit_command(app_name, command_name, args)
-            cmd_id = submit_command(
+            # Use WorkerManager to handle worker lifecycle and job submission
+            cmd_id_str = await worker_manager.submit_job_with_worker(
                 module_name,  # This is actually the app name (e.g., "open_notebook")
                 command_name,  # Command name (e.g., "process_text")
                 command_args,  # Input data
             )
-            # Convert RecordID to string if needed
-            cmd_id_str = str(cmd_id) if cmd_id else None
+            
             logger.info(
-                f"Submitted command job: {cmd_id_str} for {module_name}.{command_name}"
+                f"Submitted command job with auto-worker: {cmd_id_str} for {module_name}.{command_name}"
             )
             return cmd_id_str
 

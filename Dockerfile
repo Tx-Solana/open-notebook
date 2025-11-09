@@ -38,6 +38,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     libmagic1 \
     ffmpeg \
     supervisor \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv using the official method
@@ -58,9 +59,12 @@ EXPOSE 8502 5055
 RUN mkdir -p /app/data
 
 # Copy supervisord configuration
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY supervisord.open_notebook.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Create log directories
 RUN mkdir -p /var/log/supervisor
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# make supervisorctl available
+RUN touch /var/run/supervisor.sock
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
