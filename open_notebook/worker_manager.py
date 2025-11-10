@@ -14,39 +14,99 @@ class WorkerManager:
         self.last_job_time = time.time()
         self._monitor_process: Optional[subprocess.Popen] = None
     
-    async def ensure_worker_running(self) -> bool:
-        """Start worker via supervisor if not running"""
-        try:
-            # Check if worker is already running
-            result = subprocess.run(
-                ["supervisorctl", "status", "worker"],
-                capture_output=True, text=True, timeout=5
-            )
-            
-            if "RUNNING" in result.stdout:
-                logger.debug("Worker already running via supervisor")
-                return True
-            
-            logger.info("Starting worker via supervisor...")
-            start_result = subprocess.run(
-                ["supervisorctl", "start", "worker"],
-                capture_output=True, text=True, timeout=10
-            )
-            
-            if start_result.returncode == 0:
-                logger.info("Worker started successfully via supervisor")
-                self.last_job_time = time.time()
+    async def _wait_for_database(self, max_retries: int = 10, initial_delay: float = 1.0) -> bool:
+        """Wait for database to be ready with exponential backoff"""
+        for attempt in range(max_retries):
+            try:
+                # Simple test to see if we can connect to SurrealDB
+                from surreal_commands import registry
                 
-                # Start monitor if not already running
-                await self._ensure_monitor_running()
+                # Try to get registry info (this requires DB connection)
+                commands = registry.list_commands()
+                logger.info(f"Database ready, found {len(commands)} registered commands")
                 return True
-            else:
-                logger.error(f"Failed to start worker: {start_result.stderr}")
-                return False
                 
-        except Exception as e:
-            logger.error(f"Failed to start worker via supervisor: {e}")
-            return False
+            except Exception as e:
+                delay = initial_delay * (2 ** attempt)  # Exponential backoff
+                logger.warning(f"Database not ready (attempt {attempt + 1}/{max_retries}): {e}")
+                
+                if attempt < max_retries - 1:
+                    logger.info(f"Retrying in {delay:.1f} seconds...")
+                    await asyncio.sleep(delay)
+                else:
+                    logger.error("Database failed to become ready after maximum retries")
+                    return False
+        
+        return False
+    
+    async def ensure_worker_running(self, max_retries: int = 3) -> bool:
+        """Start worker via supervisor if not running, with retry logic for robustness"""
+        for attempt in range(max_retries):
+            try:
+                # Check if worker is already running
+                result = subprocess.run(
+                    ["supervisorctl", "status", "worker"],
+                    capture_output=True, text=True, timeout=5
+                )
+                
+                if "RUNNING" in result.stdout:
+                    logger.debug("Worker already running via supervisor")
+                    return True
+                
+                # Try to start worker
+                logger.info(f"Starting worker via supervisor (attempt {attempt + 1}/{max_retries})...")
+                start_result = subprocess.run(
+                    ["supervisorctl", "start", "worker"],
+                    capture_output=True, text=True, timeout=10
+                )
+                
+                if start_result.returncode != 0:
+                    logger.warning(f"Supervisor failed to start worker: {start_result.stderr}")
+                    if attempt < max_retries - 1:
+                        delay = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                        logger.info(f"Retrying in {delay}s...")
+                        await asyncio.sleep(delay)
+                        continue
+                    else:
+                        logger.error("Failed to start worker after all attempts")
+                        return False
+                
+                # Wait a moment for worker to initialize, then verify it's actually running
+                await asyncio.sleep(3)
+                status_result = subprocess.run(
+                    ["supervisorctl", "status", "worker"],
+                    capture_output=True, text=True, timeout=5
+                )
+                
+                if "RUNNING" in status_result.stdout:
+                    logger.info(f"Worker started successfully on attempt {attempt + 1}")
+                    self.last_job_time = time.time()
+                    await self._ensure_monitor_running()
+                    return True
+                else:
+                    # Worker started but crashed/exited
+                    logger.warning(f"Worker started but crashed (attempt {attempt + 1}): {status_result.stdout}")
+                    if attempt < max_retries - 1:
+                        delay = 2 ** attempt
+                        logger.info(f"Worker crashed, retrying in {delay}s...")
+                        await asyncio.sleep(delay)
+                        continue
+                    else:
+                        logger.error("Worker failed to stay running after all attempts")
+                        return False
+                        
+            except Exception as e:
+                logger.warning(f"Error during worker start attempt {attempt + 1}: {e}")
+                if attempt < max_retries - 1:
+                    delay = 2 ** attempt
+                    logger.info(f"Retrying in {delay}s...")
+                    await asyncio.sleep(delay)
+                    continue
+                else:
+                    logger.error("Failed to start worker due to exceptions")
+                    return False
+        
+        return False
     
     async def submit_job_with_worker(self, app_name: str, command_name: str, args: dict) -> str:
         """Submit job and ensure worker is running with monitoring"""
