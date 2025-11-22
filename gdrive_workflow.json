@@ -173,6 +173,7 @@
         "resource": "fileFolder",
         "searchMethod": "query",
         "queryString": "={{ ($json['Google Drive Query Filter'] || 'trashed = false and (mimeType=\"application/vnd.google-apps.document\" or mimeType=\"application/vnd.google-apps.presentation\" or mimeType=\"application/vnd.google-apps.spreadsheet\" or mimeType=\"application/pdf\" or mimeType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document\" or mimeType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation\" or mimeType=\"text/plain\" or mimeType contains \"video/\" or mimeType contains \"audio/\")') + ($json.folder_query || '') }}",
+        "limit": "={{ $json['Maximum Files'] || 50 }}",
         "filter": {},
         "options": {
           "fields": [
@@ -181,8 +182,7 @@
             "mimeType",
             "webViewLink"
           ]
-        },
-        "limit": "={{ $json['Maximum Files'] || 50 }}"
+        }
       },
       "id": "d2367fa3-5de9-40a2-917a-850a99b92002",
       "name": "List Google Drive Files",
@@ -262,7 +262,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Process all file types (test mode gets metadata, ingest mode gets actual data)\nconst items = $input.all();\nconst formData = $('Google Drive Configuration Form').first().json;\nconst isTestMode = formData['Execution Mode'] === 'test';\n\nreturn items.map(item => {\n  // Check if this item has an error from the download step (only in ingest mode)\n  if (item.error && !isTestMode) {\n    console.log(`❌ Download failed for file ${item.json?.name || 'Unknown'}: ${item.error.message}`);\n    \n    return {\n      json: {\n        file_id: item.json?.id || 'unknown',\n        name: item.json?.name || 'Unknown File',\n        mime_type: item.json?.mimeType || 'unknown',\n        web_view_link: item.json?.webViewLink || '',\n        content: null,\n        file_data: null,\n        source_type: 'error',\n        title: `Drive: ${item.json?.name || 'Unknown File'} (Download Failed)`,\n        processing_method: getProcessingMethod(item.json?.mimeType || 'unknown'),\n        test_mode: isTestMode,\n        error: {\n          message: item.error.message,\n          type: item.error.name || 'DownloadError',\n          details: 'File download failed - check permissions'\n        }\n      }\n    };\n  }\n  \n  const { data, mimeType, name, id, webViewLink } = item.json;\n  let content = null;\n  let sourceType = 'upload';\n  let processingMethod = getProcessingMethod(mimeType);\n  \n  function getProcessingMethod(mimeType) {\n    const workspaceTypes = [\n      'application/vnd.google-apps.document',\n      'application/vnd.google-apps.presentation', \n      'application/vnd.google-apps.spreadsheet'\n    ];\n    return workspaceTypes.includes(mimeType) ? 'export' : 'download';\n  }\n  \n  function getExportFormat(mimeType) {\n    switch(mimeType) {\n      case 'application/vnd.google-apps.document': return 'text/plain';\n      case 'application/vnd.google-apps.presentation': return 'application/pdf';\n      case 'application/vnd.google-apps.spreadsheet': return 'text/csv';\n      default: return 'original format';\n    }\n  }\n  \n  if (isTestMode) {\n    // Test mode: create mock content from metadata\n    if (processingMethod === 'export') {\n      content = `[TEST MODE - No actual content downloaded]\\nFile: ${name}\\nType: ${mimeType}\\nLink: ${webViewLink}\\n\\nThis would be the exported content in ingest mode.\\nFile would be converted to: ${getExportFormat(mimeType)}`;\n      sourceType = 'text';\n      processingMethod = 'export-test';\n    } else if (mimeType === 'text/plain') {\n      content = `[TEST MODE - No actual content downloaded]\\nFile: ${name}\\nType: ${mimeType}\\nLink: ${webViewLink}\\n\\nThis would contain the actual text content in ingest mode.`;\n      sourceType = 'text';\n      processingMethod = 'download-test';\n    } else {\n      content = `[TEST MODE - Binary file not downloaded]\\nFile: ${name}\\nType: ${mimeType}\\nSize: Would be determined after download\\n\\nThis file would be stored as binary data in ingest mode.`;\n      sourceType = 'upload';\n      processingMethod = 'download-test';\n    }\n  } else {\n    // Ingest mode: process actual downloaded content\n    if (processingMethod === 'export' && data) {\n      // Google Workspace files are converted to text/plain, pdf, or csv\n      if (typeof data === 'object' && data.type === 'Buffer') {\n        content = Buffer.from(data.data).toString('utf-8');\n      } else if (typeof data === 'string') {\n        content = data;\n      }\n      sourceType = 'text';\n    } else if (mimeType === 'text/plain' && data) {\n      // Regular text files\n      if (typeof data === 'object' && data.type === 'Buffer') {\n        content = Buffer.from(data.data).toString('utf-8');\n        sourceType = 'text';\n      } else if (typeof data === 'string') {\n        content = data;\n        sourceType = 'text';\n      }\n    }\n    // Other files remain as binary uploads (sourceType = 'upload')\n  }\n  \n  console.log(`${isTestMode ? '🧪' : '✅'} Processed: ${name} (${mimeType}) - Mode: ${isTestMode ? 'test' : 'ingest'} - Method: ${processingMethod}`);\n  \n  return {\n    json: {\n      file_id: id,\n      name: name,\n      mime_type: mimeType,\n      web_view_link: webViewLink,\n      content: content,\n      file_data: isTestMode ? null : data,\n      source_type: sourceType,\n      title: `Drive: ${name}`,\n      processing_method: processingMethod,\n      test_mode: isTestMode\n    }\n  };\n});"
+        "jsCode": "// Process file metadata and extract text content where applicable\n// Binary files are uploaded separately via the Upload File node\nconst items = $input.all();\nconst formData = $('Google Drive Configuration Form').first().json;\nconst isTestMode = formData['Execution Mode'] === 'test';\n\nreturn items.map(item => {\n  // Check if this item has an error from the download step (only in ingest mode)\n  if (item.error && !isTestMode) {\n    console.log(`❌ Download failed for file ${item.json?.name || 'Unknown'}: ${item.error.message}`);\n    \n    return {\n      json: {\n        file_id: item.json?.id || 'unknown',\n        name: item.json?.name || 'Unknown File',\n        mime_type: item.json?.mimeType || 'unknown',\n        web_view_link: item.json?.webViewLink || '',\n        content: null,\n        source_type: 'error',\n        title: `Drive: ${item.json?.name || 'Unknown File'} (Download Failed)`,\n        processing_method: getProcessingMethod(item.json?.mimeType || 'unknown'),\n        test_mode: isTestMode,\n        error: {\n          message: item.error.message,\n          type: item.error.name || 'DownloadError',\n          details: 'File download failed - check permissions'\n        }\n      }\n    };\n  }\n  \n  const { data, mimeType, name, id, webViewLink } = item.json;\n  let content = null;\n  let sourceType = 'upload';\n  let processingMethod = getProcessingMethod(mimeType);\n  \n  function getProcessingMethod(mimeType) {\n    const workspaceTypes = [\n      'application/vnd.google-apps.document',\n      'application/vnd.google-apps.presentation', \n      'application/vnd.google-apps.spreadsheet'\n    ];\n    return workspaceTypes.includes(mimeType) ? 'export' : 'download';\n  }\n  \n  function getExportFormat(mimeType) {\n    switch(mimeType) {\n      case 'application/vnd.google-apps.document': return 'text/plain';\n      case 'application/vnd.google-apps.presentation': return 'application/pdf';\n      case 'application/vnd.google-apps.spreadsheet': return 'text/csv';\n      default: return 'original format';\n    }\n  }\n  \n  if (isTestMode) {\n    // Test mode: create mock content from metadata\n    if (processingMethod === 'export') {\n      content = `[TEST MODE - No actual content downloaded]\\nFile: ${name}\\nType: ${mimeType}\\nLink: ${webViewLink}\\n\\nThis would be the exported content in ingest mode.\\nFile would be converted to: ${getExportFormat(mimeType)}`;\n      sourceType = 'text';\n      processingMethod = 'export-test';\n    } else if (mimeType === 'text/plain') {\n      content = `[TEST MODE - No actual content downloaded]\\nFile: ${name}\\nType: ${mimeType}\\nLink: ${webViewLink}\\n\\nThis would contain the actual text content in ingest mode.`;\n      sourceType = 'text';\n      processingMethod = 'download-test';\n    } else {\n      content = `[TEST MODE - Binary file not downloaded]\\nFile: ${name}\\nType: ${mimeType}\\nSize: Would be determined after download\\n\\nThis file would be stored as binary data in ingest mode.`;\n      sourceType = 'upload';\n      processingMethod = 'download-test';\n    }\n  } else {\n    // Ingest mode: extract text content for text sources\n    // Binary files will be uploaded via the Upload File node\n    if (processingMethod === 'export' && data) {\n      // Google Docs exported as text/plain can be used directly as text content\n      if (typeof data === 'object' && data.type === 'Buffer') {\n        content = Buffer.from(data.data).toString('utf-8');\n        sourceType = 'text';\n      } else if (typeof data === 'string') {\n        content = data;\n        sourceType = 'text';\n      }\n    } else if (mimeType === 'text/plain' && data) {\n      // Regular text files\n      if (typeof data === 'object' && data.type === 'Buffer') {\n        content = Buffer.from(data.data).toString('utf-8');\n        sourceType = 'text';\n      } else if (typeof data === 'string') {\n        content = data;\n        sourceType = 'text';\n      }\n    }\n    // Other files remain as binary uploads (sourceType = 'upload')\n    // Binary data will be uploaded via the separate Upload File node\n  }\n  \n  console.log(`${isTestMode ? '🧪' : '✅'} Processed: ${name} (${mimeType}) - Mode: ${isTestMode ? 'test' : 'ingest'} - Method: ${processingMethod} - Type: ${sourceType}`);\n  \n  return {\n    json: {\n      file_id: id,\n      name: name,\n      mime_type: mimeType,\n      web_view_link: webViewLink,\n      content: content,\n      source_type: sourceType,\n      title: `Drive: ${name}`,\n      processing_method: processingMethod,\n      test_mode: isTestMode\n    }\n  };\n});"
       },
       "id": "ffe4ae0f-b910-46e6-b53a-99b571fa3e3f",
       "name": "Process File Content",
@@ -341,8 +341,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1640,
-        160
+        540,
+        240
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -353,12 +353,81 @@
     },
     {
       "parameters": {
-        "jsCode": "// Find Dense Summary transformation ID and prep source data\nconst transformations = $('Get Dense Summary Transformation').first().json;\nconst fileData = $('Process File Content').all();\nlet denseSummaryId = null;\n\nif (Array.isArray(transformations)) {\n  const denseSummary = transformations.find(t => t.name === 'Dense Summary');\n  if (denseSummary) {\n    denseSummaryId = denseSummary.id;\n    console.log(`✅ Found Dense Summary transformation: ${denseSummaryId}`);\n  } else {\n    console.log('⚠️ Dense Summary transformation not found');\n  }\n} else {\n  console.log('⚠️ Unable to fetch transformations');\n}\n\n// Pass through all file data with transformation ID\nreturn fileData.map(item => ({\n  json: {\n    ...item.json,\n    dense_summary_id: denseSummaryId\n  }\n}));"
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "Dense Summary",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
-      "id": "5d6142d2-0da4-4c1e-9b32-65952df315f8",
-      "name": "Add Transformation ID",
-      "type": "n8n-nodes-base.code",
+      "id": "cb6832fc-37b4-44d2-8276-92449fd5a48e",
+      "name": "Filter Dense Summary",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 2,
+      "position": [
+        760,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Google Drive Configuration Form').first().json['Open Notebook API URL'] }}/api/uploads/file",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3de5181e-305c-431e-a506-a84dff02eda8",
+      "name": "Upload File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1640,
+        240
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "DS7cX8glgjm7mlAK",
+          "name": "open notebook api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "numberInputs": 3,
+        "useDataOfInput": 2
+      },
+      "id": "339c823d-1e07-4513-892b-00a21c64e4a2",
+      "name": "Wait for Upload and Transformation",
+      "type": "n8n-nodes-base.merge",
+      "numberInputs": 3,
+      "typeVersion": 3.1,
       "position": [
         1860,
         160
@@ -400,7 +469,7 @@
             },
             {
               "name": "file_path",
-              "value": "={{ $json.source_type === 'upload' ? $json.file_path : undefined }}"
+              "value": "={{ $json.source_type === 'upload' ? ($json.file_path || $('Upload File').first().json.file_path) : undefined }}"
             },
             {
               "name": "url",
@@ -412,7 +481,7 @@
             },
             {
               "name": "transformations",
-              "value": "={{ $json.dense_summary_id ? [$json.dense_summary_id] : [] }}"
+              "value": "={{ $('Filter Dense Summary').first()?.json?.id ? [$('Filter Dense Summary').first().json.id] : [] }}"
             }
           ]
         },
@@ -454,7 +523,7 @@
           "parameters": [
             {
               "name": "title",
-              "value": "={{ $json.title || ('Drive: ' + ($('Add Transformation ID').all().find(item => item.json.file_id === ($json.metadata?.google_drive_id || $json.google_drive_id))?.json.name || 'Unknown File')) }}"
+              "value": "={{ $json.title || ('Drive: ' + ($('Process File Content').all().find(item => item.json.file_id === ($json.metadata?.google_drive_id || $json.google_drive_id))?.json.name || 'Unknown File')) }}"
             }
           ]
         },
@@ -478,7 +547,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Generate ingestion summary from all API results\nconst allItems = $input.all();\nconst successCount = allItems.filter(item => item.json.id).length;\nconst totalFiles = allItems.length;\nconst formData = $('Google Drive Configuration Form').first().json;\nconst mergeData = $('Merge Folder Resolution').first().json || {};\n\n// Get file processing data for detailed results\nconst processingData = $('Add Transformation ID').all();\n\nconst results = allItems.map(item => {\n  const matchingFile = processingData.find(f => \n    f.json.file_id === (item.json.metadata?.google_drive_id || item.json.google_drive_id)\n  );\n  \n  return {\n    name: matchingFile?.json.name || 'Unknown',\n    source_id: item.json.id || null,\n    success: !!item.json.id,\n    processing_method: matchingFile?.json.processing_method || 'unknown',\n    error: !item.json.id ? (item.json.error || 'Failed to create source') : null\n  };\n});\n\n// Build folder information\nconst folderInfo = {\n  folders_specified: formData['Google Drive Folders'] || '',\n  folders_found: mergeData.found_folders || [],\n  folder_search_applied: !!(mergeData.folder_query && mergeData.folder_query.trim()),\n  folder_warning: mergeData.folder_warning || null\n};\n\nconst summary = {\n  success: successCount === totalFiles,\n  mode: 'ingest',\n  message: successCount === totalFiles ?\n    `✅ Google Drive import complete! Successfully imported ${successCount} files${folderInfo.folder_search_applied ? ' from specified folders' : ' from all accessible folders'}` :\n    `⚠️ Google Drive import completed with ${totalFiles - successCount} errors. ${successCount} files imported successfully.`,\n  files_processed: totalFiles,\n  sources_created: successCount,\n  failed: totalFiles - successCount,\n  folder_info: folderInfo,\n  results: results,\n  stats: {\n    workspace_files: results.filter(r => r.processing_method === 'export').length,\n    downloaded_files: results.filter(r => r.processing_method === 'download').length,\n    text_sources: results.filter(r => r.processing_method === 'export').length,\n    upload_sources: results.filter(r => r.processing_method === 'download').length\n  },\n  configuration: {\n    query_filter: formData['Google Drive Query Filter'],\n    google_drive_folders: formData['Google Drive Folders'] || 'All folders',\n    max_files: formData['Maximum Files'],\n    api_url: formData['Open Notebook API URL'],\n    notebook_id: formData['Notebook ID'],\n    embed_setting: formData['Embed Files for Search'],\n    transformations_applied: !!processingData.find(f => f.json.dense_summary_id)\n  },\n  warnings: [\n    totalFiles - successCount > 0 ? `${totalFiles - successCount} files failed to import - check API logs` : null,\n    folderInfo.folder_warning\n  ].filter(Boolean),\n  errors: results.filter(r => r.error).map(r => ({\n    file: r.name,\n    error: r.error\n  }))\n};\n\nconsole.log('📦 Google Drive Ingestion Summary:', JSON.stringify(summary, null, 2));\n\nreturn [{ json: summary }];"
+        "jsCode": "// Generate ingestion summary from all API results\nconst allItems = $input.all();\nconst successCount = allItems.filter(item => item.json.id).length;\nconst totalFiles = allItems.length;\nconst formData = $('Google Drive Configuration Form').first().json;\nconst mergeData = $('Merge Folder Resolution').first().json || {};\n\n// Get file processing data for detailed results\nconst processingData = $('Process File Content').all();\n\nconst results = allItems.map(item => {\n  const matchingFile = processingData.find(f => \n    f.json.file_id === (item.json.metadata?.google_drive_id || item.json.google_drive_id)\n  );\n  \n  return {\n    name: matchingFile?.json.name || 'Unknown',\n    source_id: item.json.id || null,\n    success: !!item.json.id,\n    processing_method: matchingFile?.json.processing_method || 'unknown',\n    error: !item.json.id ? (item.json.error || 'Failed to create source') : null\n  };\n});\n\n// Build folder information\nconst folderInfo = {\n  folders_specified: formData['Google Drive Folders'] || '',\n  folders_found: mergeData.found_folders || [],\n  folder_search_applied: !!(mergeData.folder_query && mergeData.folder_query.trim()),\n  folder_warning: mergeData.folder_warning || null\n};\n\n// Check if Dense Summary transformation was applied\nconst denseSummary = $('Filter Dense Summary').first()?.json;\nconst transformationApplied = !!denseSummary?.id;\n\nconst summary = {\n  success: successCount === totalFiles,\n  mode: 'ingest',\n  message: successCount === totalFiles ?\n    `✅ Google Drive import complete! Successfully imported ${successCount} files${folderInfo.folder_search_applied ? ' from specified folders' : ' from all accessible folders'}` :\n    `⚠️ Google Drive import completed with ${totalFiles - successCount} errors. ${successCount} files imported successfully.`,\n  files_processed: totalFiles,\n  sources_created: successCount,\n  failed: totalFiles - successCount,\n  folder_info: folderInfo,\n  results: results,\n  stats: {\n    workspace_files: results.filter(r => r.processing_method === 'export').length,\n    downloaded_files: results.filter(r => r.processing_method === 'download').length,\n    text_sources: results.filter(r => r.processing_method === 'export').length,\n    upload_sources: results.filter(r => r.processing_method === 'download').length\n  },\n  configuration: {\n    query_filter: formData['Google Drive Query Filter'],\n    google_drive_folders: formData['Google Drive Folders'] || 'All folders',\n    max_files: formData['Maximum Files'],\n    api_url: formData['Open Notebook API URL'],\n    notebook_id: formData['Notebook ID'],\n    embed_setting: formData['Embed Files for Search'],\n    transformations_applied: transformationApplied,\n    transformation_id: denseSummary?.id || null\n  },\n  warnings: [\n    totalFiles - successCount > 0 ? `${totalFiles - successCount} files failed to import - check API logs` : null,\n    folderInfo.folder_warning\n  ].filter(Boolean),\n  errors: results.filter(r => r.error).map(r => ({\n    file: r.name,\n    error: r.error\n  }))\n};\n\nconsole.log('📦 Google Drive Ingestion Summary:', JSON.stringify(summary, null, 2));\n\nreturn [{ json: summary }];"
       },
       "id": "281f8efe-ce6c-49b7-b281-dd3caae57105",
       "name": "Generate Ingestion Summary",
@@ -573,6 +642,11 @@
             "node": "List Google Drive Files",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Get Dense Summary Transformation",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -613,6 +687,11 @@
             "node": "Process File Content",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Upload File",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -639,7 +718,7 @@
         ],
         [
           {
-            "node": "Get Dense Summary Transformation",
+            "node": "Wait for Upload and Transformation",
             "type": "main",
             "index": 0
           }
@@ -661,14 +740,36 @@
       "main": [
         [
           {
-            "node": "Add Transformation ID",
+            "node": "Filter Dense Summary",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Add Transformation ID": {
+    "Filter Dense Summary": {
+      "main": [
+        [
+          {
+            "node": "Wait for Upload and Transformation",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Upload File": {
+      "main": [
+        [
+          {
+            "node": "Wait for Upload and Transformation",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Wait for Upload and Transformation": {
       "main": [
         [
           {
