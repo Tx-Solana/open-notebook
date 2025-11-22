@@ -1,32 +1,8 @@
 {
-  "name": "Google Drive Unified Workflow",
-  "meta": {
-    "templateId": "gdrive-unified-ingestion",
-    "description": "Unified workflow for Google Drive file ingestion with configurable form input",
-    "examples": {
-      "testMode": {
-        "Execution Mode": "test",
-        "Google Drive Query Filter": "trashed = false and (mimeType=\"application/vnd.google-apps.document\" or mimeType=\"application/vnd.google-apps.presentation\" or mimeType=\"application/vnd.google-apps.spreadsheet\" or mimeType=\"application/pdf\")",
-        "Google Drive Folders": "Documents, Projects",
-        "Maximum Files": 50,
-        "Open Notebook API URL": "http://localhost:5055",
-        "Notebook ID": "notebook_12345",
-        "Embed Files for Search": "true"
-      },
-      "ingestMode": {
-        "Execution Mode": "ingest",
-        "Google Drive Query Filter": "trashed = false and (mimeType=\"application/vnd.google-apps.document\" or mimeType=\"application/vnd.google-apps.presentation\" or mimeType=\"application/vnd.google-apps.spreadsheet\" or mimeType=\"application/pdf\" or mimeType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document\" or mimeType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation\" or mimeType=\"text/plain\" or mimeType contains \"video/\" or mimeType contains \"audio/\")",
-        "Google Drive Folders": "",
-        "Maximum Files": 100,
-        "Open Notebook API URL": "https://my-notebook.example.com",
-        "Notebook ID": "nb_987654321",
-        "Embed Files for Search": "false"
-      }
-    }
-  },
   "nodes": [
     {
       "parameters": {
+        "path": "30b3522e-25ae-4ebc-a319-4567cf773210",
         "formTitle": "Google Drive Ingestion Configuration",
         "formDescription": "Configure your Google Drive file ingestion settings",
         "formFields": {
@@ -34,95 +10,76 @@
             {
               "fieldLabel": "Execution Mode",
               "fieldType": "dropdown",
-              "requiredField": true,
               "fieldOptions": {
                 "values": [
                   {
-                    "option": "Test Mode (Preview files only)",
-                    "value": "test"
+                    "option": "Test Mode (Preview files only)"
                   },
                   {
-                    "option": "Ingest Mode (Import into notebook)",
-                    "value": "ingest"
+                    "option": "Ingest Mode (Import into notebook)"
                   }
                 ]
-              }
+              },
+              "requiredField": true
             },
             {
               "fieldLabel": "Google Drive Query Filter",
-              "fieldType": "textarea",
-              "requiredField": false,
-              "fieldValue": "trashed = false and (mimeType=\"application/vnd.google-apps.document\" or mimeType=\"application/vnd.google-apps.presentation\" or mimeType=\"application/vnd.google-apps.spreadsheet\" or mimeType=\"application/pdf\")"
+              "fieldType": "textarea"
             },
             {
               "fieldLabel": "Google Drive Folders",
-              "fieldType": "textarea",
-              "requiredField": false,
-              "fieldValue": "",
-              "fieldPlaceholder": "Enter folder names separated by commas (e.g., 'Documents, Projects, Archive')\nLeave empty to search all folders"
+              "fieldType": "textarea"
             },
             {
               "fieldLabel": "Maximum Files",
-              "fieldType": "number",
-              "requiredField": false,
-              "fieldValue": "50"
+              "fieldType": "number"
             },
             {
               "fieldLabel": "Open Notebook API URL",
-              "fieldType": "text",
-              "requiredField": true,
-              "fieldValue": "http://localhost:5055"
+              "requiredField": true
             },
             {
-              "fieldLabel": "Notebook ID",
-              "fieldType": "text",
-              "requiredField": false,
-              "fieldValue": ""
+              "fieldLabel": "Notebook ID"
             },
             {
               "fieldLabel": "Embed Files for Search",
               "fieldType": "dropdown",
-              "requiredField": false,
               "fieldOptions": {
                 "values": [
                   {
-                    "option": "Yes",
-                    "value": "true"
+                    "option": "Yes"
                   },
                   {
-                    "option": "No",
-                    "value": "false"
+                    "option": "No"
                   }
                 ]
-              },
-              "fieldValue": "true"
+              }
             }
           ]
         },
-        "options": {
-          "formPath": "google-drive-ingestion"
-        }
+        "options": {}
       },
-      "id": "unified1-1234-5678-9abc-123456789012",
+      "id": "1e0eae13-383f-4139-87de-6f8b83f52692",
       "name": "Google Drive Configuration Form",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 1,
       "position": [
-        240,
-        300
-      ]
+        -780,
+        60
+      ],
+      "webhookId": "30b3522e-25ae-4ebc-a319-4567cf773210"
     },
     {
       "parameters": {
         "jsCode": "// Resolve Google Drive folder names to IDs\nconst formData = $input.first().json;\nconst folderNames = formData['Google Drive Folders'];\n\n// Handle different input types: array, string, or null/undefined\nlet folders = [];\n\nif (Array.isArray(folderNames)) {\n  // Input is already an array\n  folders = folderNames.filter(name => name && typeof name === 'string' && name.trim().length > 0).map(name => name.trim());\n} else if (typeof folderNames === 'string' && folderNames.trim()) {\n  // Input is a comma-separated string\n  folders = folderNames.split(',').map(name => name.trim()).filter(name => name.length > 0);\n}\n\nif (folders.length === 0) {\n  // No specific folders - pass through original data\n  return [{\n    json: {\n      ...formData,\n      folder_ids: [],\n      folder_query: '',\n      needs_folder_resolution: false\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...formData,\n    folder_names: folders,\n    needs_folder_resolution: true\n  }\n}];"
       },
-      "id": "unified22-1234-5678-9abc-123456789012",
+      "id": "04d81f79-056f-41c6-9904-e881bac931bc",
       "name": "Parse Folder Names",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        360,
-        300
+        -560,
+        60
       ]
     },
     {
@@ -148,22 +105,21 @@
         },
         "options": {}
       },
-      "id": "unified23-1234-5678-9abc-123456789012",
+      "id": "5e08b190-765c-4447-8f9c-83c3bb11eefc",
       "name": "Check if Folder Resolution Needed",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        580,
-        300
+        -340,
+        60
       ]
     },
     {
       "parameters": {
-        "authentication": "serviceAccount",
         "resource": "fileFolder",
-        "operation": "search",
         "searchMethod": "query",
         "queryString": "={{ `mimeType='application/vnd.google-apps.folder' and name='${$json.folder_names.join(\"' or name='\")}' and trashed=false` }}",
+        "filter": {},
         "options": {
           "fields": [
             "id",
@@ -171,18 +127,18 @@
           ]
         }
       },
-      "id": "unified24-1234-5678-9abc-123456789012",
+      "id": "b0254444-283f-4628-8519-2f8ecf322b03",
       "name": "Find Folder IDs",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        800,
-        250
+        -120,
+        -15
       ],
       "credentials": {
-        "googleApi": {
-          "id": "1",
-          "name": "Google Drive Service Account"
+        "googleDriveOAuth2Api": {
+          "id": "VOl2MYBqPUPu0rbW",
+          "name": "Tx Google Drive account"
         }
       }
     },
@@ -190,57 +146,56 @@
       "parameters": {
         "jsCode": "// Build folder query from resolved IDs\nconst folderResults = $input.all();\nconst originalData = $('Parse Folder Names').first().json;\n\nif (folderResults.length === 0) {\n  console.log('⚠️ No folders found matching the specified names');\n  return [{\n    json: {\n      ...originalData,\n      folder_ids: [],\n      folder_query: '',\n      folder_warning: 'No folders found matching the specified names'\n    }\n  }];\n}\n\n// Extract folder IDs\nconst folderIds = folderResults.map(folder => folder.json.id);\nconst foundFolders = folderResults.map(folder => folder.json.name);\n\n// Build the folder query part\nconst folderQuery = folderIds.length > 0 \n  ? ` and (${folderIds.map(id => `'${id}' in parents`).join(' or ')})` \n  : '';\n\nconsole.log(`📁 Found ${folderIds.length} folders: ${foundFolders.join(', ')}`);\n\nreturn [{\n  json: {\n    ...originalData,\n    folder_ids: folderIds,\n    folder_query: folderQuery,\n    found_folders: foundFolders\n  }\n}];"
       },
-      "id": "unified25-1234-5678-9abc-123456789012",
+      "id": "7ec95ee4-9f07-4bf5-a857-e5d611a179b1",
       "name": "Build Folder Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1020,
-        250
+        100,
+        -15
       ]
     },
     {
       "parameters": {
         "mode": "append"
       },
-      "id": "unified26-1234-5678-9abc-123456789012",
+      "id": "74052976-3cf3-404a-ad15-361faad7292f",
       "name": "Merge Folder Resolution",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2.1,
       "position": [
-        1240,
-        300
+        320,
+        60
       ]
     },
     {
       "parameters": {
-        "authentication": "serviceAccount",
         "resource": "fileFolder",
-        "operation": "search",
         "searchMethod": "query",
         "queryString": "={{ ($json['Google Drive Query Filter'] || 'trashed = false and (mimeType=\"application/vnd.google-apps.document\" or mimeType=\"application/vnd.google-apps.presentation\" or mimeType=\"application/vnd.google-apps.spreadsheet\" or mimeType=\"application/pdf\" or mimeType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document\" or mimeType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation\" or mimeType=\"text/plain\" or mimeType contains \"video/\" or mimeType contains \"audio/\")') + ($json.folder_query || '') }}",
+        "filter": {},
         "options": {
           "fields": [
             "id",
             "name",
             "mimeType",
             "webViewLink"
-          ],
-          "pageSize": "={{ $json['Maximum Files'] || 50 }}"
-        }
+          ]
+        },
+        "limit": "={{ $json['Maximum Files'] || 50 }}"
       },
-      "id": "unified2-1234-5678-9abc-123456789012",
+      "id": "d2367fa3-5de9-40a2-917a-850a99b92002",
       "name": "List Google Drive Files",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1460,
-        300
+        540,
+        60
       ],
       "credentials": {
-        "googleApi": {
-          "id": "1",
-          "name": "Google Drive Service Account"
+        "googleDriveOAuth2Api": {
+          "id": "VOl2MYBqPUPu0rbW",
+          "name": "Tx Google Drive account"
         }
       }
     },
@@ -267,44 +222,40 @@
         },
         "options": {}
       },
-      "id": "unified20-1234-5678-9abc-123456789012",
+      "id": "0d4723a1-ba3d-422a-b240-a0f4993bc66f",
       "name": "Check Test Mode",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        1680,
-        300
+        760,
+        60
       ]
     },
     {
       "parameters": {
-        "authentication": "serviceAccount",
-        "resource": "file",
         "operation": "download",
         "fileId": "={{ $json.id }}",
         "options": {
           "googleFileConversion": {
             "conversion": {
               "docsToFormat": "text/plain",
-              "slidesToFormat": "application/pdf",
-              "drawingToFormat": "image/jpeg",
-              "sheetsToFormat": "text/csv"
+              "slidesToFormat": "application/pdf"
             }
           }
         }
       },
-      "id": "unified7-1234-5678-9abc-123456789012",
+      "id": "bc5dfd92-f0c3-4724-8555-3102c0b85809",
       "name": "Download/Export File",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1900,
-        350
+        980,
+        140
       ],
       "credentials": {
-        "googleApi": {
-          "id": "1",
-          "name": "Google Drive Service Account"
+        "googleDriveOAuth2Api": {
+          "id": "VOl2MYBqPUPu0rbW",
+          "name": "Tx Google Drive account"
         }
       },
       "onError": "continueRegularOutput"
@@ -313,13 +264,13 @@
       "parameters": {
         "jsCode": "// Process all file types (test mode gets metadata, ingest mode gets actual data)\nconst items = $input.all();\nconst formData = $('Google Drive Configuration Form').first().json;\nconst isTestMode = formData['Execution Mode'] === 'test';\n\nreturn items.map(item => {\n  // Check if this item has an error from the download step (only in ingest mode)\n  if (item.error && !isTestMode) {\n    console.log(`❌ Download failed for file ${item.json?.name || 'Unknown'}: ${item.error.message}`);\n    \n    return {\n      json: {\n        file_id: item.json?.id || 'unknown',\n        name: item.json?.name || 'Unknown File',\n        mime_type: item.json?.mimeType || 'unknown',\n        web_view_link: item.json?.webViewLink || '',\n        content: null,\n        file_data: null,\n        source_type: 'error',\n        title: `Drive: ${item.json?.name || 'Unknown File'} (Download Failed)`,\n        processing_method: getProcessingMethod(item.json?.mimeType || 'unknown'),\n        test_mode: isTestMode,\n        error: {\n          message: item.error.message,\n          type: item.error.name || 'DownloadError',\n          details: 'File download failed - check permissions'\n        }\n      }\n    };\n  }\n  \n  const { data, mimeType, name, id, webViewLink } = item.json;\n  let content = null;\n  let sourceType = 'upload';\n  let processingMethod = getProcessingMethod(mimeType);\n  \n  function getProcessingMethod(mimeType) {\n    const workspaceTypes = [\n      'application/vnd.google-apps.document',\n      'application/vnd.google-apps.presentation', \n      'application/vnd.google-apps.spreadsheet'\n    ];\n    return workspaceTypes.includes(mimeType) ? 'export' : 'download';\n  }\n  \n  function getExportFormat(mimeType) {\n    switch(mimeType) {\n      case 'application/vnd.google-apps.document': return 'text/plain';\n      case 'application/vnd.google-apps.presentation': return 'application/pdf';\n      case 'application/vnd.google-apps.spreadsheet': return 'text/csv';\n      default: return 'original format';\n    }\n  }\n  \n  if (isTestMode) {\n    // Test mode: create mock content from metadata\n    if (processingMethod === 'export') {\n      content = `[TEST MODE - No actual content downloaded]\\nFile: ${name}\\nType: ${mimeType}\\nLink: ${webViewLink}\\n\\nThis would be the exported content in ingest mode.\\nFile would be converted to: ${getExportFormat(mimeType)}`;\n      sourceType = 'text';\n      processingMethod = 'export-test';\n    } else if (mimeType === 'text/plain') {\n      content = `[TEST MODE - No actual content downloaded]\\nFile: ${name}\\nType: ${mimeType}\\nLink: ${webViewLink}\\n\\nThis would contain the actual text content in ingest mode.`;\n      sourceType = 'text';\n      processingMethod = 'download-test';\n    } else {\n      content = `[TEST MODE - Binary file not downloaded]\\nFile: ${name}\\nType: ${mimeType}\\nSize: Would be determined after download\\n\\nThis file would be stored as binary data in ingest mode.`;\n      sourceType = 'upload';\n      processingMethod = 'download-test';\n    }\n  } else {\n    // Ingest mode: process actual downloaded content\n    if (processingMethod === 'export' && data) {\n      // Google Workspace files are converted to text/plain, pdf, or csv\n      if (typeof data === 'object' && data.type === 'Buffer') {\n        content = Buffer.from(data.data).toString('utf-8');\n      } else if (typeof data === 'string') {\n        content = data;\n      }\n      sourceType = 'text';\n    } else if (mimeType === 'text/plain' && data) {\n      // Regular text files\n      if (typeof data === 'object' && data.type === 'Buffer') {\n        content = Buffer.from(data.data).toString('utf-8');\n        sourceType = 'text';\n      } else if (typeof data === 'string') {\n        content = data;\n        sourceType = 'text';\n      }\n    }\n    // Other files remain as binary uploads (sourceType = 'upload')\n  }\n  \n  console.log(`${isTestMode ? '🧪' : '✅'} Processed: ${name} (${mimeType}) - Mode: ${isTestMode ? 'test' : 'ingest'} - Method: ${processingMethod}`);\n  \n  return {\n    json: {\n      file_id: id,\n      name: name,\n      mime_type: mimeType,\n      web_view_link: webViewLink,\n      content: content,\n      file_data: isTestMode ? null : data,\n      source_type: sourceType,\n      title: `Drive: ${name}`,\n      processing_method: processingMethod,\n      test_mode: isTestMode\n    }\n  };\n});"
       },
-      "id": "unified10-1234-5678-9abc-123456789012",
+      "id": "ffe4ae0f-b910-46e6-b53a-99b571fa3e3f",
       "name": "Process File Content",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2120,
-        350
+        1200,
+        60
       ]
     },
     {
@@ -345,26 +296,26 @@
         },
         "options": {}
       },
-      "id": "unified18-1234-5678-9abc-123456789012",
+      "id": "7cf0ccab-2a80-4f7d-a4c2-966af01596a8",
       "name": "Check Mode for Source Creation",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        2300,
-        350
+        1420,
+        60
       ]
     },
     {
       "parameters": {
         "jsCode": "// Enhanced Test mode - create summary with downloaded content preview\nconst items = $input.all();\nconst formData = $('Google Drive Configuration Form').first().json;\nconst mergeData = $('Merge Folder Resolution').first().json || {};\n\n// Group files by processing method\nconst workspaceFiles = items.filter(item => item.json.processing_method === 'export-test' || item.json.processing_method === 'export');\nconst downloadedFiles = items.filter(item => item.json.processing_method === 'download-test' || item.json.processing_method === 'download');\n\n// Create content previews\nconst contentPreviews = items.slice(0, 5).map(item => {\n  const preview = {\n    name: item.json.name,\n    type: item.json.mime_type,\n    id: item.json.file_id,\n    link: item.json.web_view_link,\n    processing_method: item.json.processing_method,\n    source_type: item.json.source_type\n  };\n  \n  // Add content preview if available\n  if (item.json.content) {\n    const content = item.json.content.toString();\n    preview.content_preview = content.length > 200 ? \n      content.substring(0, 200) + '...' : content;\n    preview.content_length = content.length;\n  }\n  \n  return preview;\n});\n\n// Build folder information\nconst folderInfo = {\n  folders_specified: formData['Google Drive Folders'] || '',\n  folders_found: mergeData.found_folders || [],\n  folder_search_applied: !!(mergeData.folder_query && mergeData.folder_query.trim()),\n  folder_warning: mergeData.folder_warning || null\n};\n\nconst summary = {\n  success: true,\n  mode: 'test',\n  message: `✅ Google Drive test complete! Found and processed ${items.length} files${folderInfo.folder_search_applied ? ' from specified folders' : ' from all accessible folders'}`,\n  files_found: items.length,\n  files_processed: items.length,\n  folder_info: folderInfo,\n  processing_stats: {\n    workspace_files_exported: workspaceFiles.length,\n    other_files_downloaded: downloadedFiles.length,\n    text_content_extracted: items.filter(i => i.json.content && i.json.content.length > 0).length,\n    files_with_binary_data: items.filter(i => i.json.file_data && !i.json.content).length\n  },\n  content_previews: contentPreviews,\n  configuration: {\n    query_filter: formData['Google Drive Query Filter'],\n    google_drive_folders: formData['Google Drive Folders'] || 'All folders',\n    max_files: formData['Maximum Files'],\n    api_url: formData['Open Notebook API URL'],\n    embed_setting: formData['Embed Files for Search']\n  },\n  warnings: [\n    'Test mode: Files downloaded and processed but NOT imported into notebook',\n    items.length > 5 ? `Showing content preview for first 5 of ${items.length} files` : null,\n    folderInfo.folder_warning\n  ].filter(Boolean)\n};\n\nconsole.log('🧪 Enhanced Google Drive Test Results:', JSON.stringify(summary, null, 2));\n\nreturn [{ json: summary }];"
       },
-      "id": "unified19-1234-5678-9abc-123456789012",
+      "id": "1806d70e-de49-4a27-8a6d-93bc6c52d9e1",
       "name": "Enhanced Test Mode Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2300,
-        200
+        2520,
+        -40
       ]
     },
     {
@@ -385,18 +336,18 @@
           "timeout": 10000
         }
       },
-      "id": "unified12-1234-5678-9abc-123456789012",
+      "id": "b7d0c68a-fd53-40ab-b4ab-36c1e3560920",
       "name": "Get Dense Summary Transformation",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2500,
-        400
+        1640,
+        160
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "2",
-          "name": "Open Notebook API"
+          "id": "DS7cX8glgjm7mlAK",
+          "name": "open notebook api"
         }
       }
     },
@@ -404,13 +355,13 @@
       "parameters": {
         "jsCode": "// Find Dense Summary transformation ID and prep source data\nconst transformations = $('Get Dense Summary Transformation').first().json;\nconst fileData = $('Process File Content').all();\nlet denseSummaryId = null;\n\nif (Array.isArray(transformations)) {\n  const denseSummary = transformations.find(t => t.name === 'Dense Summary');\n  if (denseSummary) {\n    denseSummaryId = denseSummary.id;\n    console.log(`✅ Found Dense Summary transformation: ${denseSummaryId}`);\n  } else {\n    console.log('⚠️ Dense Summary transformation not found');\n  }\n} else {\n  console.log('⚠️ Unable to fetch transformations');\n}\n\n// Pass through all file data with transformation ID\nreturn fileData.map(item => ({\n  json: {\n    ...item.json,\n    dense_summary_id: denseSummaryId\n  }\n}));"
       },
-      "id": "unified13-1234-5678-9abc-123456789012",
+      "id": "5d6142d2-0da4-4c1e-9b32-65952df315f8",
       "name": "Add Transformation ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2720,
-        400
+        1860,
+        160
       ]
     },
     {
@@ -419,7 +370,6 @@
         "url": "={{ $('Google Drive Configuration Form').first().json['Open Notebook API URL'] }}/api/sources",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -429,6 +379,7 @@
             }
           ]
         },
+        "sendBody": true,
         "bodyParameters": {
           "parameters": [
             {
@@ -467,18 +418,18 @@
         },
         "options": {}
       },
-      "id": "unified14-1234-5678-9abc-123456789012",
+      "id": "d7e4722d-8e61-4c08-9bfb-e49ce8530ed6",
       "name": "Create Source",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2940,
-        400
+        2080,
+        160
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "2",
-          "name": "Open Notebook API"
+          "id": "DS7cX8glgjm7mlAK",
+          "name": "open notebook api"
         }
       },
       "onError": "continueRegularOutput"
@@ -489,7 +440,6 @@
         "url": "={{ $('Google Drive Configuration Form').first().json['Open Notebook API URL'] }}/api/sources/{{ $json.id }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -499,6 +449,7 @@
             }
           ]
         },
+        "sendBody": true,
         "bodyParameters": {
           "parameters": [
             {
@@ -509,18 +460,18 @@
         },
         "options": {}
       },
-      "id": "unified15-1234-5678-9abc-123456789012",
+      "id": "12b618a9-c00e-4713-b253-b2c664b45353",
       "name": "Update Source Title",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3160,
-        400
+        2300,
+        160
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "2",
-          "name": "Open Notebook API"
+          "id": "DS7cX8glgjm7mlAK",
+          "name": "open notebook api"
         }
       },
       "onError": "continueRegularOutput"
@@ -529,26 +480,26 @@
       "parameters": {
         "jsCode": "// Generate ingestion summary from all API results\nconst allItems = $input.all();\nconst successCount = allItems.filter(item => item.json.id).length;\nconst totalFiles = allItems.length;\nconst formData = $('Google Drive Configuration Form').first().json;\nconst mergeData = $('Merge Folder Resolution').first().json || {};\n\n// Get file processing data for detailed results\nconst processingData = $('Add Transformation ID').all();\n\nconst results = allItems.map(item => {\n  const matchingFile = processingData.find(f => \n    f.json.file_id === (item.json.metadata?.google_drive_id || item.json.google_drive_id)\n  );\n  \n  return {\n    name: matchingFile?.json.name || 'Unknown',\n    source_id: item.json.id || null,\n    success: !!item.json.id,\n    processing_method: matchingFile?.json.processing_method || 'unknown',\n    error: !item.json.id ? (item.json.error || 'Failed to create source') : null\n  };\n});\n\n// Build folder information\nconst folderInfo = {\n  folders_specified: formData['Google Drive Folders'] || '',\n  folders_found: mergeData.found_folders || [],\n  folder_search_applied: !!(mergeData.folder_query && mergeData.folder_query.trim()),\n  folder_warning: mergeData.folder_warning || null\n};\n\nconst summary = {\n  success: successCount === totalFiles,\n  mode: 'ingest',\n  message: successCount === totalFiles ?\n    `✅ Google Drive import complete! Successfully imported ${successCount} files${folderInfo.folder_search_applied ? ' from specified folders' : ' from all accessible folders'}` :\n    `⚠️ Google Drive import completed with ${totalFiles - successCount} errors. ${successCount} files imported successfully.`,\n  files_processed: totalFiles,\n  sources_created: successCount,\n  failed: totalFiles - successCount,\n  folder_info: folderInfo,\n  results: results,\n  stats: {\n    workspace_files: results.filter(r => r.processing_method === 'export').length,\n    downloaded_files: results.filter(r => r.processing_method === 'download').length,\n    text_sources: results.filter(r => r.processing_method === 'export').length,\n    upload_sources: results.filter(r => r.processing_method === 'download').length\n  },\n  configuration: {\n    query_filter: formData['Google Drive Query Filter'],\n    google_drive_folders: formData['Google Drive Folders'] || 'All folders',\n    max_files: formData['Maximum Files'],\n    api_url: formData['Open Notebook API URL'],\n    notebook_id: formData['Notebook ID'],\n    embed_setting: formData['Embed Files for Search'],\n    transformations_applied: !!processingData.find(f => f.json.dense_summary_id)\n  },\n  warnings: [\n    totalFiles - successCount > 0 ? `${totalFiles - successCount} files failed to import - check API logs` : null,\n    folderInfo.folder_warning\n  ].filter(Boolean),\n  errors: results.filter(r => r.error).map(r => ({\n    file: r.name,\n    error: r.error\n  }))\n};\n\nconsole.log('📦 Google Drive Ingestion Summary:', JSON.stringify(summary, null, 2));\n\nreturn [{ json: summary }];"
       },
-      "id": "unified16-1234-5678-9abc-123456789012",
+      "id": "281f8efe-ce6c-49b7-b281-dd3caae57105",
       "name": "Generate Ingestion Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3380,
-        400
+        2520,
+        160
       ]
     },
     {
       "parameters": {
         "mode": "append"
       },
-      "id": "unified25-1234-5678-9abc-123456789012",
+      "id": "5b49a917-dd26-463c-ba48-28d0a2b54e06",
       "name": "Merge Final Results",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2.1,
       "position": [
-        3600,
-        325
+        2740,
+        60
       ]
     }
   ],
@@ -732,14 +683,14 @@
       "main": [
         [
           {
-            "node": "Update Source Metadata",
+            "node": "Update Source Title",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update Source Metadata": {
+    "Update Source Title": {
       "main": [
         [
           {
@@ -762,65 +713,24 @@
       ]
     }
   },
-  "variables": [
-    {
-      "key": "MODE",
-      "value": "test",
-      "type": "string",
-      "description": "Workflow mode: 'test' for preview or 'ingest' for full processing"
-    },
-    {
-      "key": "NOTEBOOK_ID",
-      "value": "",
-      "type": "string",
-      "description": "The ID of the notebook to add sources to (required for ingest mode)"
-    },
-    {
-      "key": "OPEN_NOTEBOOK_API_URL",
-      "value": "http://localhost:5055",
-      "type": "string",
-      "description": "Base URL for Open Notebook API"
-    },
-    {
-      "key": "EMBED_FILES",
-      "value": "true",
-      "type": "boolean",
-      "description": "Whether to embed files for search"
-    },
-    {
-      "key": "MAX_FILES",
-      "value": "50",
-      "type": "number",
-      "description": "Maximum number of files to process"
-    },
-    {
-      "key": "QUERY_FILTER",
-      "value": "trashed = false and (mimeType=\"application/vnd.google-apps.document\" or mimeType=\"application/vnd.google-apps.presentation\" or mimeType=\"application/vnd.google-apps.spreadsheet\" or mimeType=\"application/pdf\" or mimeType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document\" or mimeType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation\" or mimeType=\"text/plain\" or mimeType contains \"video/\" or mimeType contains \"audio/\")",
-      "type": "string",
-      "description": "Google Drive API query filter for selecting files"
-    }
-  ],
   "pinData": {
     "Google Drive Configuration Form": [
       {
-        "json": {
-          "Execution Mode": "test",
-          "Google Drive Query Filter": "trashed = false and (mimeType=\"application/vnd.google-apps.document\" or mimeType=\"application/vnd.google-apps.presentation\" or mimeType=\"application/vnd.google-apps.spreadsheet\" or mimeType=\"application/pdf\")",
-          "Google Drive Folders": ["Open Notebook", "Read AI Notes"],
-          "Maximum Files": 50,
-          "Open Notebook API URL": "https://api.opnb.tx.ron.in.eu.org",
-          "Notebook ID": "michael_tmp",
-          "Embed Files for Search": "true"
-        }
+        "Execution Mode": "test",
+        "Google Drive Query Filter": "trashed = false and (mimeType=\"application/vnd.google-apps.document\" or mimeType=\"application/vnd.google-apps.presentation\" or mimeType=\"application/vnd.google-apps.spreadsheet\" or mimeType=\"application/pdf\")",
+        "Google Drive Folders": [
+          "Open Notebook",
+          "Read AI Notes"
+        ],
+        "Maximum Files": 50,
+        "Open Notebook API URL": "https://api.opnb.tx.ron.in.eu.org",
+        "Notebook ID": "notebook:7dl3kgg9vormc85spg6m",
+        "Embed Files for Search": "true"
       }
     ]
   },
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "staticData": null,
-  "tags": [],
-  "triggerCount": 0,
-  "updatedAt": "2025-11-11T12:00:00.000Z",
-  "versionId": "unified123-1234-5678-9abc-123456789012"
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6d743ac1680114bb58c78228abbe0c5777e8083112e9a457ff8c3a1c99ec6698"
+  }
 }
