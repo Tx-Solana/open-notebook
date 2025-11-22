@@ -17,6 +17,7 @@ from api.routers import (
     sources,
     speaker_profiles,
     transformations,
+    uploads,
 )
 
 # Import commands to register them in the API process
@@ -64,6 +65,7 @@ app.include_router(commands_router.router, prefix="/api", tags=["commands"])
 app.include_router(podcasts.router, prefix="/api", tags=["podcasts"])
 app.include_router(episode_profiles.router, prefix="/api", tags=["episode-profiles"])
 app.include_router(speaker_profiles.router, prefix="/api", tags=["speaker-profiles"])
+app.include_router(uploads.router, prefix="/api", tags=["uploads"])
 
 
 @app.get("/")

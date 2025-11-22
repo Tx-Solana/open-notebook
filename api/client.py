@@ -400,6 +400,29 @@ class APIClient:
         """Delete an episode profile."""
         return self._make_request("DELETE", f"/api/episode-profiles/{profile_id}")
 
+    def upload_file_from_binary(
+        self, filename: str, file_data: bytes, custom_filename: Optional[str] = None
+    ) -> Dict:
+        """
+        Upload a file from binary data.
+        
+        Args:
+            filename: Original filename
+            file_data: Raw binary file data
+            custom_filename: Optional custom filename (without extension)
+        
+        Returns:
+            Dict with file_path, original_filename, saved_filename, file_size, message
+        """
+        data = {
+            "filename": filename,
+            "file_data": file_data,
+        }
+        if custom_filename:
+            data["custom_filename"] = custom_filename
+            
+        return self._make_request("POST", "/api/uploads/file-from-binary", data=data)
+
 
 # Global client instance
 api_client = APIClient()

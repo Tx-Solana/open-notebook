@@ -262,3 +262,12 @@ class CreateSourceInsightRequest(BaseModel):
 class ErrorResponse(BaseModel):
     error: str
     message: str
+
+
+# Upload API models
+class FileUploadResponse(BaseModel):
+    file_path: str = Field(..., description="Path to the uploaded file")
+    original_filename: str = Field(..., description="Original filename from upload")
+    saved_filename: str = Field(..., description="Filename used when saving")
+    file_size: int = Field(..., description="Size of uploaded file in bytes")
+    message: str = Field(..., description="Success message")
