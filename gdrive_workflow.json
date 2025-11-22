@@ -415,6 +415,7 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "={{ $('Google Drive Configuration Form').first().json['Open Notebook API URL'] }}/api/sources",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
@@ -447,8 +448,12 @@
               "value": "={{ $json.content || undefined }}"
             },
             {
-              "name": "file_data",
-              "value": "={{ $json.source_type === 'upload' ? $json.file_data : undefined }}"
+              "name": "file_path",
+              "value": "={{ $json.source_type === 'upload' ? $json.file_path : undefined }}"
+            },
+            {
+              "name": "url",
+              "value": "={{ $json.source_type === 'link' ? $json.web_view_link : undefined }}"
             },
             {
               "name": "embed",
@@ -480,6 +485,7 @@
     },
     {
       "parameters": {
+        "method": "PUT",
         "url": "={{ $('Google Drive Configuration Form').first().json['Open Notebook API URL'] }}/api/sources/{{ $json.id }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
@@ -496,15 +502,15 @@
         "bodyParameters": {
           "parameters": [
             {
-              "name": "metadata",
-              "value": "={{ {\n  'google_drive_id': $('Add Transformation ID').all().find(item => item.json.file_id === ($json.metadata?.google_drive_id || $json.google_drive_id))?.json.file_id || 'unknown',\n  'web_view_link': $('Add Transformation ID').all().find(item => item.json.file_id === ($json.metadata?.google_drive_id || $json.google_drive_id))?.json.web_view_link || '',\n  'mime_type': $('Add Transformation ID').all().find(item => item.json.file_id === ($json.metadata?.google_drive_id || $json.google_drive_id))?.json.mime_type || 'unknown',\n  'processing_method': $('Add Transformation ID').all().find(item => item.json.file_id === ($json.metadata?.google_drive_id || $json.google_drive_id))?.json.processing_method || 'unknown',\n  'import_date': new Date().toISOString(),\n  'import_source': 'google_drive_n8n'\n} }}"
+              "name": "title",
+              "value": "={{ $json.title || ('Drive: ' + ($('Add Transformation ID').all().find(item => item.json.file_id === ($json.metadata?.google_drive_id || $json.google_drive_id))?.json.name || 'Unknown File')) }}"
             }
           ]
         },
         "options": {}
       },
       "id": "unified15-1234-5678-9abc-123456789012",
-      "name": "Update Source Metadata",
+      "name": "Update Source Title",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
