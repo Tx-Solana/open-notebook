@@ -1,4 +1,5 @@
 import os
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, TypeVar, Union
@@ -47,15 +48,27 @@ def ensure_record_id(value: Union[str, RecordID]) -> RecordID:
 @asynccontextmanager
 async def db_connection():
     db = AsyncSurreal(get_database_url())
-    await db.signin(
-        {
-            "username": os.environ.get("SURREAL_USER"),
-            "password": get_database_password(),
-        }
-    )
-    await db.use(
-        os.environ.get("SURREAL_NAMESPACE"), os.environ.get("SURREAL_DATABASE")
-    )
+    max_retries = 5
+    delay = 2  # seconds
+    for attempt in range(max_retries):
+        try:
+            await db.signin(
+                {
+                    "username": os.environ.get("SURREAL_USER"),
+                    "password": get_database_password(),
+                }
+            )
+            await db.use(
+                os.environ.get("SURREAL_NAMESPACE"), os.environ.get("SURREAL_DATABASE")
+            )
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                logger.warning(f"SurrealDB connection failed (attempt {attempt+1}/{max_retries}): {e}. Retrying in {delay}s...")
+                await asyncio.sleep(delay)
+            else:
+                logger.error(f"SurrealDB connection failed after {max_retries} attempts: {e}")
+                raise
     try:
         yield db
     finally:
