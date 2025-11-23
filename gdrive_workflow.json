@@ -421,7 +421,7 @@
       "parameters": {
         "mode": "chooseBranch",
         "numberInputs": 3,
-        "useDataOfInput": 2
+        "useDataOfInput": 3
       },
       "id": "339c823d-1e07-4513-892b-00a21c64e4a2",
       "name": "Wait for Upload and Transformation",
@@ -430,6 +430,20 @@
       "typeVersion": 3.1,
       "position": [
         1860,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop_over_files",
+      "name": "Loop Over Files",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2020,
         160
       ]
     },
@@ -461,19 +475,11 @@
             },
             {
               "name": "type",
-              "value": "={{ $json.source_type }}"
-            },
-            {
-              "name": "content",
-              "value": "={{ $json.content || undefined }}"
+              "value": "upload"
             },
             {
               "name": "file_path",
-              "value": "={{ $json.source_type === 'upload' ? ($json.file_path || $('Upload File').first().json.file_path) : undefined }}"
-            },
-            {
-              "name": "url",
-              "value": "={{ $json.source_type === 'link' ? $json.web_view_link : undefined }}"
+              "value": "={{ $('Upload File').first().json.file_path }}"
             },
             {
               "name": "embed",
@@ -492,7 +498,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2080,
+        2220,
         160
       ],
       "credentials": {
@@ -534,7 +540,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2300,
+        2440,
         160
       ],
       "credentials": {
@@ -773,6 +779,24 @@
       "main": [
         [
           {
+            "node": "Loop Over Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Files": {
+      "main": [
+        [
+          {
+            "node": "Generate Ingestion Summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Create Source",
             "type": "main",
             "index": 0
@@ -795,7 +819,7 @@
       "main": [
         [
           {
-            "node": "Generate Ingestion Summary",
+            "node": "Loop Over Files",
             "type": "main",
             "index": 0
           }
